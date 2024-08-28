@@ -1,6 +1,6 @@
-package com.codex.ytdl.views;
+package com.codex.musicmanager.views;
 
-import com.codex.ytdl.views.ytdl.YTDLView;
+import com.codex.musicmanager.views.ytdl.YTDLView;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.html.Footer;
@@ -38,7 +38,7 @@ public class MainLayout extends AppLayout {
     }
 
     private void addDrawerContent() {
-        Span appName = new Span("My App");
+        Span appName = new Span("Music Manager");
         appName.addClassNames(LumoUtility.FontWeight.SEMIBOLD, LumoUtility.FontSize.LARGE);
         Header header = new Header(appName);
 

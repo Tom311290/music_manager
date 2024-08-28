@@ -3,7 +3,7 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <!-- Project from https://start.vaadin.com/project/6ad563d2-94d7-4b67-bedc-16a90a7b52e1 -->
-    <groupId>com.codex.ytdl</groupId>
+    <groupId>com.codex.musicmanager</groupId>
     <artifactId>ytdlvaadin</artifactId>
     <name>ytdlvaadin</name>
     <version>1.0-SNAPSHOT</version>
