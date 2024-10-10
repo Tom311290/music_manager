@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.concurrent.Callable;
 
-import java.util.logging.*;
+import org.apache.logging.log4j.Logger;
 
 
 /**
@@ -42,7 +42,7 @@ public class ExternalProcessStarter implements Callable<Object> {
 			return true;
 			
 		} catch (IOException e) {
-			logger.log(Level.SEVERE, e.getMessage());
+			logger.error(e.getMessage());
 			e.printStackTrace();
 			return false;
 			

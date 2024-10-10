@@ -5,15 +5,18 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.FileOutputStream;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.codex.musicmanager.constants.YTDLConstants;
 import com.codex.musicmanager.utils.ExternalProcessStarter;
+import com.codex.musicmanager.utils.LogFileTailer;
 import com.codex.musicmanager.views.MainLayout;
 import com.vaadin.flow.component.Composite;
 import com.vaadin.flow.component.button.Button;
@@ -33,7 +36,9 @@ import com.vaadin.flow.theme.lumo.LumoUtility.Gap;
 @Route(value = "", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
 public class YTDLView extends Composite<VerticalLayout> {
-	private final static Logger logger = Logger.getLogger(YTDLView.class.getName());
+	private static final long serialVersionUID = -5744399912356346832L;
+	
+	private final static Logger logger = LogManager.getLogger(YTDLView.class.getName());
 	Process process = null;
 
 	Properties prop = null;
@@ -43,6 +48,14 @@ public class YTDLView extends Composite<VerticalLayout> {
 	String songNameFormatProperty = "songNameFormatProperty";
 	
 	private Button startButton;
+   
+	//Get ExecutorService from Executors utility class, thread pool size is 10
+    ExecutorService executorService;
+	
+    private TextField ytdlExeLocationTextField;
+	private TextField songNameFormatTextField;
+	private TextField downloadFromURLTextField;
+	private TextField downloadDestinationTextField;
 	
     public YTDLView() {
         getContent().setWidth("100%");
@@ -59,10 +72,8 @@ public class YTDLView extends Composite<VerticalLayout> {
         createConsoleLogTextArea();
     }
     
-    //Get ExecutorService from Executors utility class, thread pool size is 10
-    ExecutorService executorService;
+
     private void initData() {
-    	//executorService = Executors.newFixedThreadPool(5);
 		executorService = Executors.newFixedThreadPool(4,new ThreadFactory() {
 											            public Thread newThread(Runnable r) {
 											                Thread t = Executors.defaultThreadFactory().newThread(r);
@@ -89,7 +100,7 @@ public class YTDLView extends Composite<VerticalLayout> {
 	
 			}catch (FileNotFoundException e){
 				//logScreen.appendText("No init file! Creating one: " + initFile.getAbsolutePath()+"\n");
-				logger.log(Level.WARNING, "No init file! Creating one: " + initFile.getAbsolutePath());
+				logger.warn("No init file! Creating one: " + initFile.getAbsolutePath());
 	
 				initFile.getParentFile().mkdirs();
 				initFile.createNewFile();
@@ -104,7 +115,7 @@ public class YTDLView extends Composite<VerticalLayout> {
 			updateYTDL();
 		}catch (IOException e) {
 			//logScreen.appendText(YTDLConstants.FATAL_ERROR_MESSAGE);
-			logger.log(Level.SEVERE, "Unable to load last settings!", e);
+			logger.error("Unable to load last settings!", e);
 			e.printStackTrace();
 		}
 		
@@ -123,6 +134,8 @@ public class YTDLView extends Composite<VerticalLayout> {
         startButton.setWidth("100%");
         startButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         
+        startButton.addClickListener(event -> startDownload());
+        
         getContent().add(startButton);
     }
     
@@ -135,11 +148,13 @@ public class YTDLView extends Composite<VerticalLayout> {
         consoleLogTextArea.setReadOnly(true);
         consoleLogTextArea.setHeightFull();
         
+        (new LogFileTailer()).runTailer(consoleLogTextArea);
+        
         getContent().add(consoleLogTextArea);
     }
     
     private void createSongNameFormatLayout() {
-        TextField songNameFormatTextField = new TextField();
+        songNameFormatTextField = new TextField();
         songNameFormatTextField.getStyle().setPadding("0");
         songNameFormatTextField.setLabel("Download song name format");
         songNameFormatTextField.setWidth("100%");
@@ -157,7 +172,7 @@ public class YTDLView extends Composite<VerticalLayout> {
     }
     
     private void createDownloadFromURLLayout() {
-    	 TextField downloadFromURLTextField = new TextField();
+    	 downloadFromURLTextField = new TextField();
     	 downloadFromURLTextField.getStyle().setPadding("0");
          downloadFromURLTextField.setLabel("Download from URL");
          downloadFromURLTextField.setWidth("100%");
@@ -172,7 +187,7 @@ public class YTDLView extends Composite<VerticalLayout> {
         downloadDestinationLayout.setWidth("100%");
         downloadDestinationLayout.setHeight("min-content");
 
-        TextField downloadDestinationTextField = new TextField();
+        downloadDestinationTextField = new TextField();
 		downloadDestinationTextField.getStyle().setPadding("0");
         downloadDestinationTextField.setLabel("Dowload destination");
         downloadDestinationTextField.setWidth("100%");
@@ -196,7 +211,7 @@ public class YTDLView extends Composite<VerticalLayout> {
         ytdlExeLocationLayout.setWidth("100%");
         ytdlExeLocationLayout.setHeight("min-content");
         
-        TextField ytdlExeLocationTextField = new TextField();
+        ytdlExeLocationTextField = new TextField();
         ytdlExeLocationTextField.getStyle().setPadding("0");
         ytdlExeLocationTextField.setLabel("YouTubeDL.exe location");
         ytdlExeLocationTextField.setWidth("100%");
@@ -244,7 +259,7 @@ public class YTDLView extends Composite<VerticalLayout> {
 			ProcessBuilder processBuilder = new ProcessBuilder(ytdlExeLocation, "-U", "--verbose");
 			startProcess(processBuilder, "Update started...", "Update finished!");
 		}else {
-			logger.log(Level.WARNING, "Youtube-dl location not set! Unable to update application!");
+			logger.warn("Youtube-dl location not set! Unable to update application!");
 		}
 
 	}
@@ -256,6 +271,46 @@ public class YTDLView extends Composite<VerticalLayout> {
 		extProcStarter.setStartProcessMessage(startProcMessage);
 		extProcStarter.setEndProcessMessage(endProcMessage);
 		executorService.submit(extProcStarter);
+	}
+	
+	public void startDownload() {
+		try {
+			String message = "";
+
+			if(!message.equals("")){
+				logger.info("---------------------------------------------------------------------");
+				logger.info("Please take care of errors:" + message);
+				logger.info("---------------------------------------------------------------------");
+				return;
+			}
+
+			logger.info("Download started! Please wait...");
+			String downloadFilePatt = "\"" +downloadDestinationTextField.getValue() + "\\" + songNameFormatTextField.getValue() + "\"";
+
+			logger.info("Download to:" + downloadFilePatt);
+			ProcessBuilder processBuilder = new ProcessBuilder(ytdlExeLocationTextField.getValue(), 
+					"--extract-audio", 
+					"--audio-format mp3",
+					"--audio-quality 0",
+					"-o", 
+					downloadFilePatt, 
+					downloadFromURLTextField.getValue());
+			
+			startProcess(processBuilder, "Download started...", "Download finished!");
+
+			logger.info("Saving last setup...");
+			prop.setProperty(ytdlExeLocationProperty, ytdlExeLocationTextField.getValue());
+			prop.setProperty(lastDownloadedURLProperty, downloadFromURLTextField.getValue());
+			prop.setProperty(lastDownloadToLocationProperty, downloadDestinationTextField.getValue());
+			prop.setProperty(songNameFormatProperty, songNameFormatTextField.getValue());
+			prop.store(new FileOutputStream(YTDLConstants.YTDL_TEMP_FOLDER + YTDLConstants.INIT_FILE), null);
+
+			logger.info("Saving finished!");
+
+		} catch (IOException e) {
+			logger.error(e.getMessage());
+			e.printStackTrace();
+		}
 	}
 	
 }
